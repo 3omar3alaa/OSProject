@@ -17,23 +17,31 @@ struct process{
 	int arrivalTime;
 	int runtime;
 };
-void BuildStruct(struct process *p);
+void Check(std::vector<std::vector<process> > &processesVector);
+void BuildStruct(struct process *p,string line);
+
 int main() {
     
 	signal(SIGINT,ClearResources);
 	//Here implement the reading of process.txt
 	int count = 0;
 	int index = 0;
-	CountProcesses(&count);
-	cout<<"The number of processes is "<<count<<"\n";
-	int* arrivalTimeArr = new int[count];
-	ConfigureTimeArrivalArray(arrivalTimeArr,& index);
-	cout<<"The arrival time array is\n";
-	for(int i =0;i<index;i++)
+	//CountProcesses(&count);
+	//ConfigureTimeArrivalArray(arrivalTimeArr,& index);
+	std::vector< std::vector<process> > processesVector;
+	Check(processesVector);
+	cout<<"The size of processesVector is "<<processesVector.size()<<"\n";
+	int* arrivalTimeArr = new int[processesVector.size()];
+	for(int i =0;i<processesVector.size();i++)
 	{
-		cout<<arrivalTimeArr[i]<<"\n";
+		arrivalTimeArr[i] = processesVector[i][0].arrivalTime;
 	}
-	std::vector< std::vector<process> > v;
+	cout<<"The arrivalTimeArr elements are \n";
+	for(int i =0;i<processesVector.size();i++)
+	{
+		cout<< arrivalTimeArr[i]<<"\n";
+	}
+	//cout<< v[0] <<"\n";
 	//TODO: 
 	// 1-Ask the user about the chosen scheduling Algorithm and its parameters if exists.
 	// 2-Initiate and create Scheduler and Clock processes.
@@ -60,66 +68,76 @@ void ClearResources(int)
 	exit(0);
 }
 
-void CountProcesses(int* count)
+
+void Check(std::vector<std::vector<process> > &processesVector)
 {
+	std::vector<process> temp;
 	string comment = "#";
 	string line;
+	string arrtime ="";
+	string prevArrTime ="";
+	int flag = 0;
+	bool firstline = true;
 	ifstream in ("processes.txt");
 	if (in.is_open())
 	{
 		cout<<"The file is opened correctly\n";
 		while(getline(in,line))
 		{
-			cout<<"The line is " << line <<"\n";
-			if(line.find(comment) == string::npos)
-				(*count)++;
-	    }
-	}
-	in.close();
-}
-
-void ConfigureTimeArrivalArray(int* arrivalTimeArr,int* index)
-{
-	ifstream in2 ("processes.txt");
-	string arrtime ="";
-	string line;
-	string comment = "#";
-	int flag = 0;
-	if (in2.is_open())
-	{
-		cout<<"The file is opened correctly\n";
-		while(getline(in2,line))
-		{
 			flag = 0;
 			cout<<"The line is " << line <<"\n";
 			if(line.find(comment) == string::npos)
 			{
-				stringstream iss(line);
+				struct process p;
+				BuildStruct(&p,line);
+				stringstream iss(line);	
 				while(getline(iss,arrtime,'\t'))
 				{
 					if(flag == 1)
 					{
-						cout<<"Arrtime is "<<arrtime<<"\n";
-						if(atoi(arrtime.c_str()) != arrivalTimeArr[(*index)-1])
+						if(firstline)
 						{
-							arrivalTimeArr[*index] = atoi(arrtime.c_str());
-							(*index)++;
-							break;
+							prevArrTime = arrtime;
+							firstline = false;
 						}
-					}
+						if(prevArrTime.compare(arrtime) == 0)
+						{
+							temp.push_back(p);
+						}
+						else 
+						{
+							processesVector.push_back(temp);
+							temp.clear();
+							temp.push_back(p);
+							prevArrTime = arrtime;
+						}
+						break;
+					}	
 					flag++;
 				}
 			}
-		}			    
+	    }
+	    processesVector.push_back(temp);
 	}
-	in2.close();
+	in.close();
 }
-void BuildStruct(struct process *p,stringstream iss)
+
+void BuildStruct(struct process *p,string line)
 {
 	string params="";
-	p.pid = -2;
+	p->pid = -2;
+	stringstream iss(line);
+	int i=0;
 	while(getline(iss,params,'\t'))
 	{
-		.
+		if(i==0)
+			p->id = atoi(params.c_str());
+		else if(i==1)
+			p->arrivalTime = atoi(params.c_str());
+		else if(i==2)
+			p->runtime = atoi(params.c_str());
+		else if(i==3)
+			p->priority = atoi(params.c_str());
+		i++;
 	}
 }
