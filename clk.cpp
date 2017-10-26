@@ -8,6 +8,10 @@ it is not a real part of operating system */
 #include <iostream>
 
 int shmid;
+void handle(int)
+{
+  //std::cout<<"The clock received an alarm signal\n";
+}
 /*clear the resources before exit*/
 void cleanup(int x)
 {
@@ -19,6 +23,7 @@ void cleanup(int x)
 /* this file represents the system clock for ease of calculations*/
 int main(int argc,char* argv[]) 
 {
+  signal(SIGALRM,handle);
   printf("Clock Starting\n");
   signal(SIGINT,cleanup);
   int clk=0;
@@ -45,10 +50,12 @@ int main(int argc,char* argv[])
    {
        sleep(1);
        (*shmaddr)++;
-       kill(getppid(),SIGALRM);
-       killpg(getpgrp(),SIGCONT);
-       std::cout<<"The clk parent pid is "<<getppid()<<"\n";
-       std::cout<<"This is clk.o and current time is "<<*shmaddr<<"\n" ;
+       //kill(getppid(),SIGALRM);
+       //std::cout<<"The clock grp id is "<<getpgrp()<<"\n";
+       killpg(getpgrp(),SIGALRM);
+       
+       //std::cout<<"The clk parent pid is "<<getppid()<<"\n";
+       //std::cout<<"This is clk.o and current time is "<<*shmaddr<<"\n" ;
    }
 
 }

@@ -7,11 +7,12 @@
 #include <sys/ipc.h>
 
 using namespace std;
+
 void ClearResources(int);
 void ClockChanged(int);
-void CountProcesses(int* count);
-void ConfigureTimeArrivalArray(int* arr);
-void ConfigureTimeArrivalArray(int* arr,int* index);
+//void CountProcesses(int* count);
+//void ConfigureTimeArrivalArray(int* arr);
+//void ConfigureTimeArrivalArray(int* arr,int* index);
 void Build2DVector(std::vector<std::vector<process> > &processesVector);
 void BuildStruct(struct process *p,string line);
 
@@ -33,10 +34,10 @@ int main() {
 	Build2DVector(processesVector);
 	//cout<<"The size of processesVector is "<<processesVector.size()<<"\n";
 	arrivalTimeArr = new int[processesVector.size()];
-	/*for(int i =0;i<processesVector.size();i++)
+	for(int i =0;i<processesVector.size();i++)
 	{
 		arrivalTimeArr[i] = processesVector[i][0].arrivalTime;
-	}*/
+	}
 	//cout<<"The arrivalTimeArr elements are \n";
 	/*for(int i =0;i<processesVector.size();i++)
 	{
@@ -49,15 +50,28 @@ int main() {
 	cout<<"1. non-preemptive HPF\n2. Shortest Remaining time Next\n3. Round Robin\n";
 	cin>>scheduler;
 	cout<<"The pgen id is "<<getpid()<<"\n";
+	cout<<"The pgen grp id is "<<getpgrp()<<"\n";
 	// 2-Initiate and create Scheduler and Clock processes.
+	//Initiating the Scheduler
+	schId = fork();
+	if(schId == 0)
+	{
+		char p[10];
+		sprintf(p,"%d",scheduler);
+		execl("sch.out",p, (char *) 0);
+	}
 	//Initiating the clock
-	clkId = fork();
+	else
+	{
+		clkId = fork();
+	}
+
 	if(clkId == 0)
 	{
 		char p[10];
 		sprintf(p,"%d",schId);
 		execl("clock.out",p, (char *) 0);
-		cout<<"The parent id is "<<getppid()<<"\n";
+		//cout<<"The parent id is "<<getppid()<<"\n";
 	}
 	else
 	{
@@ -75,7 +89,7 @@ int main() {
 		while(1)
 		{
 			pause();
-			cout<<"Returned from pause"<<endl;
+			//cout<<"Returned from pause"<<endl;
 		}
 		//while(1){}
 		//TODO:  Generation Main Loop
