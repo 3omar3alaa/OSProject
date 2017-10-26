@@ -13,13 +13,21 @@
 #include <signal.h>
 
 #define SHKEY 300
+#define MSGQKEY 11111
 
 
 ///==============================
 //don't mess with this variable//
 int* shmaddr;                  //
 //===============================
-
+struct process{
+  long mtype;
+  int id;
+  int pid;
+  int priority;
+  int arrivalTime;
+  int runtime;
+};
 
 
 int getClk()

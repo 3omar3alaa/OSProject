@@ -5,6 +5,8 @@ This file represents an emulated clock for the simulation purpose only
 it is not a real part of operating system */
 
 #include "headers.h"
+#include <iostream>
+
 int shmid;
 /*clear the resources before exit*/
 void cleanup(int x)
@@ -15,7 +17,8 @@ void cleanup(int x)
 }
 
 /* this file represents the system clock for ease of calculations*/
-int main() {
+int main(int argc,char* argv[]) 
+{
   printf("Clock Starting\n");
   signal(SIGINT,cleanup);
   int clk=0;
@@ -42,6 +45,10 @@ int main() {
    {
        sleep(1);
        (*shmaddr)++;
+       kill(getppid(),SIGALRM);
+       killpg(getpgrp(),SIGCONT);
+       std::cout<<"The clk parent pid is "<<getppid()<<"\n";
+       std::cout<<"This is clk.o and current time is "<<*shmaddr<<"\n" ;
    }
 
 }
