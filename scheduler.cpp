@@ -14,7 +14,7 @@ struct processI {
 };
 
 //Variables
-queue<processI> processQue;
+deque<processI> processQue;
 int quantum;
 bool isProcessing;
 bool gotNewEvent;
@@ -22,6 +22,7 @@ int msgqid;
 processI* currentProcess;
 long lastRun;
 int deletePid;
+sigset_t sigSet;
 
 //Functions
 void startRR();
@@ -62,13 +63,18 @@ int main(int argc, char* argv[]) {
 }
 
 void startRR() {
-	quantum = 2;
+	quantum = 4;
 	isProcessing = false;
 	gotNewEvent = false;
 	lastRun = 0;
 	deletePid = 0;
 	initClk();
 	cout << "Starting RR Algorithm with a quantum of " << quantum << endl;
+
+	sigemptyset(&sigSet);
+	sigaddset(&sigSet, SIGCHLD);
+	sigaddset(&sigSet, SIGCONT);
+	sigaddset(&sigSet, SIGURG);
 
 	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
 	if (msgqid == -1) {
@@ -105,7 +111,7 @@ void handleProcessArrival(int dumbLinux) {
 			newProcess.mtype = arrivedProcess.mtype;
 			newProcess.priority = arrivedProcess.priority;
 			newProcess.runningTime = arrivedProcess.runtime;
-			processQue.push(newProcess);
+			processQue.push_back(newProcess);
 			if (!isProcessing) {
 				gotNewEvent = true;
 			}
@@ -125,7 +131,7 @@ void handleChild(int dumbLinux) {
 	//TODO: lock queue
 	int childPid;
 	int   status;
-	//TODO: this assumes dead child is currentProcess
+	//TODO: this assumes single dead child
 	if ((childPid = waitpid(-1, &status, 0)) != -1)
 	{
 		if (WIFEXITED(status)) {
@@ -138,14 +144,21 @@ void handleChild(int dumbLinux) {
 
 void RoundRobinIt() {
 	//TODO: lock queue	
+	sigprocmask(SIG_BLOCK, &sigSet, NULL);
 	if (gotNewEvent) {
 		gotNewEvent = false; //TODO: RACE CONDITION
 		bool finishedQuantum = getClk() - lastRun >= quantum;
 		if (deletePid != 0) {
 			if (currentProcess->pid == deletePid)
 				currentProcess == NULL; //TODO" delete?
-			else 
-				cout << "YAYAYAYYAYAYAYAYAYYAYAYAYAYYAYAYA" << endl; //TODO: WHAT
+			else {
+				for (int i = 0; i < processQue.size(); i++) {
+					if (processQue.at(i).pid == deletePid) {
+						processQue.erase(processQue.begin() + i);
+						break;
+					}
+				}
+			}
 			deletePid = 0;
 		}
 		if (processQue.empty() && currentProcess == NULL) {
@@ -161,7 +174,7 @@ void RoundRobinIt() {
 		}
 		if (currentProcess == NULL) {
 			currentProcess = &(processQue.front());
-			processQue.pop();
+			processQue.pop_front();
 			cout << "Dequeued process with id " << currentProcess->id << endl;
 			runProcess(currentProcess);
 			lastRun = getClk(); 
@@ -169,14 +182,15 @@ void RoundRobinIt() {
 		else if (finishedQuantum) {
 			kill(currentProcess->pid, SIGSTOP);
 			cout << "Stopped process with id " << currentProcess->id << endl;
-			processQue.push(*currentProcess);
+			processQue.push_back(*currentProcess);
 			currentProcess = &(processQue.front());
-			processQue.pop();
+			processQue.pop_front();
 			cout << "Dequeued process with id " << currentProcess->id << endl;
 			runProcess(currentProcess);
 			lastRun = getClk();
 		}
 	}	
+	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);
 }
 
 void runProcess(processI* runThis) {
