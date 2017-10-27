@@ -16,13 +16,6 @@ using namespace std;
 #define SHKEY 300
 #define MSGQKEY 11111
 
-struct processData {
-	int arrivaltime;
-	int priority;
-	int runningtime;
-	int id;
-};
-
 ///==============================
 //don't mess with this variable//
 int* shmaddr;                  //

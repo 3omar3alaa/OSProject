@@ -4,7 +4,7 @@ using namespace std;
 #include "headers.h"
 
 //structs
-struct process {
+struct processI {
 	long mtype;
 	int arrivaltime;
 	int priority;
@@ -14,12 +14,12 @@ struct process {
 };
 
 //Variables
-queue<process> processQue;
+queue<processI> processQue;
 int quantum;
 bool isProcessing;
 bool gotNewEvent;
 int msgqid;
-process* currentProcess;
+processI* currentProcess;
 long lastRun;
 
 //Functions
@@ -29,7 +29,7 @@ void handleClkSignal(int);
 void handleChild(int);
 void RoundRobinIt();
 void unhandleClkSignal(int);
-void runProcess(process*);
+void runProcess(processI*);
 void ClearResources(int);
 void testSendProcess();
 
@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     
 	cout << "Scheduler started with algorithm number " << argv[1] << endl;
 	signal(SIGINT, ClearResources);
-	//initClk(); //DEBUG
+	initClk();
 	int whichAlgo = *(argv[1]) - '0';
 
 	switch (whichAlgo) {
@@ -53,16 +53,12 @@ int main(int argc, char* argv[]) {
 		exit(-1); //TODO: handle this?
 		break;
 	}
-	//DEBUG
-	testSendProcess();
-	if (gotNewEvent)
-		RoundRobinIt();
-	/*while (true) {
+	while (true) {
 		pause();
 		cout << "Resuming" << endl;
 		while(gotNewEvent)
 			RoundRobinIt();
-	}*/
+	}
     
 }
 
@@ -90,7 +86,7 @@ void handleProcessArrival(int dumbLinux) {
 	//TODO: lock queue
 	int recVal = 0;
 	bool firstMsg = true;
-	struct process arrivedProcess;
+	struct processI arrivedProcess;
 	int recSize = sizeof(arrivedProcess) - sizeof(arrivedProcess.mtype);
 
 	while (recVal != -1) {
@@ -134,8 +130,7 @@ void RoundRobinIt() {
 	//TODO: lock queue	
 	if (gotNewEvent) {
 		gotNewEvent = false; //TODO: RACE CONDITION
-		//bool finishedQuantum = getClk() - lastRun >= quantum;
-		bool finishedQuantum = false;//DEBUG
+		bool finishedQuantum = getClk() - lastRun >= quantum;
 		if (processQue.empty() && currentProcess == NULL) {
 			cout << "Queue empty in scheduler. Unhandling clock ... " << endl;
 			signal(SIGCONT, unhandleClkSignal); //TODO: insert correct handled signal, unhandle signal correctly
@@ -152,7 +147,7 @@ void RoundRobinIt() {
 			processQue.pop();
 			cout << "Dequeued process with id " << currentProcess->id << endl;
 			runProcess(currentProcess);
-			//lastRun = getClk(); //DEBUG
+			lastRun = getClk(); 
 		}
 		else if (finishedQuantum) {
 			kill(currentProcess->pid, SIGSTOP);
@@ -165,12 +160,12 @@ void RoundRobinIt() {
 	}	
 }
 
-void runProcess(process* runThis) {
+void runProcess(processI* runThis) {
 	if (runThis->pid == -1) {
 		cout << "Forking new process for the first time with id " << runThis->id << endl;
 		char pTime[100]; //TODO size?
 		sprintf(pTime, "%d", runThis->runningTime);
-		cout << pTime<<endl;//DEBUG
+		cout << pTime<<endl;
 		int pid = fork(); //TODO: if error
 		if (pid == 0) {
 			execl("./process.out", pTime, (char*)0);
@@ -190,30 +185,6 @@ void unhandleClkSignal(int dumbLinux) {	//empty because I don't want to handle i
 }
 
 void ClearResources(int) {
-	//destroyClk(false);
+	destroyClk(false);
 	//TODO: clear pointers?
-}
-
-void testSendProcess() {
-	int send_val;
-	struct process toSendProcess;
-
-	toSendProcess.mtype = 7;     	
-	toSendProcess.arrivaltime = 3;
-	toSendProcess.id = 1;
-	toSendProcess.pid = -1;
-	toSendProcess.priority = 1;
-	toSendProcess.runningTime = 5;
-	int sendSize = sizeof(toSendProcess) - sizeof(toSendProcess.mtype);
-	send_val = msgsnd(msgqid, &toSendProcess, sendSize, !IPC_NOWAIT);
-
-	if (send_val == -1)
-		cout<<"Errror in send"<<endl;
-	else
-		cout << "Sent a process"<<endl;
-
-	cout << "Sending signal to self" << endl;
-	kill(getpid(), SIGCONT);
-	cout << "Sent a signal" << endl;
-
 }

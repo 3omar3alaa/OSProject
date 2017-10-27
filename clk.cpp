@@ -16,7 +16,7 @@ void handle(int)
 void cleanup(int x)
 {
   shmctl( shmid,IPC_RMID,NULL);
-  printf("Clock terminating \n");
+  cout<<"Clock terminating"<<endl;
   raise(9);
 }
 
@@ -24,7 +24,7 @@ void cleanup(int x)
 int main(int argc,char* argv[]) 
 {
   signal(SIGALRM,handle);
-  printf("Clock Starting\n");
+  cout<<"Clock Starting"<<endl;
   signal(SIGINT,cleanup);
   int clk=0;
 
@@ -32,14 +32,14 @@ int main(int argc,char* argv[])
  shmid = shmget(SHKEY, 4, IPC_CREAT|0644);
  if((long)shmid == -1)
   	{
-  	  perror("Error in create shm");
+  	  cout<<"Error in create shm"<<endl;
   	  exit(-1);
   	}
 
  int * shmaddr = (int*) shmat(shmid, (void *)0, 0);
   if((long)shmaddr == -1)
   {	
-  	perror("Error in attach in parent");
+  	cout<<"Error in attach in parent"<<endl;
   	exit(-1);
   }
   else
