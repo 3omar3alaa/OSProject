@@ -1,23 +1,23 @@
-
+#include <cstdlib>
+using namespace std;
 #include "headers.h"
 
-/* Modify this file as needed*/
-int remainingtime =0;
+//Variables
+long remainingtime;
 
-
+//TODO: handle SIGCONT, SIGSTOP
 int main(int agrc, char* argv[]) {
+	cout << "Process started with running time of " << argv[0] << endl;
+	//initClk(); //DEBUG
+	remainingtime = strtol(argv[0],NULL,10); //TODO: No error handling
+	//DEBUG
+	cout << remainingtime << endl;
 
-    //if you need to use the emulated clock uncomment the following line
-    //initClk();
+	/*while (remainingtime>0) {
+		sleep(1);
+		remainingtime--;
+	}*/
 
-    //TODO: it needs to get the remaining time from somewhere
-    //remainingtime = ??;
-  
-    while(remainingtime>0) {
-       sleep(1);
-       remainingtime--;
-    }
-    //if you need to use the emulated clock uncomment the following line
-    //destroyClk(false);
-    return 0;
+	//destroyClk(false);//DEBUG
+	return 0;
 }

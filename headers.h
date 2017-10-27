@@ -1,5 +1,6 @@
 
-#include <stdio.h>      //if you don't use scanf/printf change this include
+#include <iostream> 
+using namespace std;
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -13,7 +14,14 @@
 #include <signal.h>
 
 #define SHKEY 300
+#define MSGQKEY 11111
 
+struct processData {
+	int arrivaltime;
+	int priority;
+	int runningtime;
+	int id;
+};
 
 ///==============================
 //don't mess with this variable//
@@ -41,7 +49,7 @@ void initClk()
   while((int)shmid == -1)
   	{
           //Make sure that the Clock exists
-        printf("wait, Clock not initialized yet\n");
+        cout<<"wait, Clock not initialized yet\n"<<endl;
         sleep(1);
         shmid = shmget(SHKEY, 4, 0444);
   	}

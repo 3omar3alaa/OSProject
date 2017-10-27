@@ -10,13 +10,13 @@ int shmid;
 void cleanup(int x)
 {
   shmctl( shmid,IPC_RMID,NULL);
-  printf("Clock terminating \n");
+  cout<<"Clock terminating \n"<<endl;
   raise(9);
 }
 
 /* this file represents the system clock for ease of calculations*/
 int main() {
-  printf("Clock Starting\n");
+	cout << "Clock Starting\n" << endl;
   signal(SIGINT,cleanup);
   int clk=0;
 
@@ -24,14 +24,14 @@ int main() {
  shmid = shmget(SHKEY, 4, IPC_CREAT|0644);
  if((long)shmid == -1)
   	{
-  	  perror("Error in create shm");
+	 cout << "Error in create shm" << endl;;
   	  exit(-1);
   	}
 
  int * shmaddr = (int*) shmat(shmid, (void *)0, 0);
   if((long)shmaddr == -1)
   {	
-  	perror("Error in attach in parent");
+  	cout<<"Error in attach in parent"<<endl;
   	exit(-1);
   }
   else

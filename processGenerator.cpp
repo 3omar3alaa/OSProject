@@ -15,7 +15,7 @@ int main() {
     initClk();
     /////Toget time use the following function
     int x= getClk();
-    printf("current time is %d\n",x);
+    cout<<"current time is "<<x<<endl;
     //TODO:  Generation Main Loop
     //4-Creating a data structure for process  and  provide it with its parameters 
     //5-Send the information to  the scheduler at the appropriate time 
