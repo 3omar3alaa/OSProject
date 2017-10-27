@@ -5,18 +5,26 @@ This file represents an emulated clock for the simulation purpose only
 it is not a real part of operating system */
 
 #include "headers.h"
+#include <iostream>
+
 int shmid;
+void handle(int)
+{
+  //std::cout<<"The clock received an alarm signal\n";
+}
 /*clear the resources before exit*/
 void cleanup(int x)
 {
   shmctl( shmid,IPC_RMID,NULL);
-  cout<<"Clock terminating \n"<<endl;
+  printf("Clock terminating \n");
   raise(9);
 }
 
 /* this file represents the system clock for ease of calculations*/
-int main() {
-	cout << "Clock Starting\n" << endl;
+int main(int argc,char* argv[]) 
+{
+  signal(SIGALRM,handle);
+  printf("Clock Starting\n");
   signal(SIGINT,cleanup);
   int clk=0;
 
@@ -24,14 +32,14 @@ int main() {
  shmid = shmget(SHKEY, 4, IPC_CREAT|0644);
  if((long)shmid == -1)
   	{
-	 cout << "Error in create shm" << endl;;
+  	  perror("Error in create shm");
   	  exit(-1);
   	}
 
  int * shmaddr = (int*) shmat(shmid, (void *)0, 0);
   if((long)shmaddr == -1)
   {	
-  	cout<<"Error in attach in parent"<<endl;
+  	perror("Error in attach in parent");
   	exit(-1);
   }
   else
@@ -42,6 +50,12 @@ int main() {
    {
        sleep(1);
        (*shmaddr)++;
+       //kill(getppid(),SIGALRM);
+       //std::cout<<"The clock grp id is "<<getpgrp()<<"\n";
+       killpg(getpgrp(),SIGALRM);
+       
+       //std::cout<<"The clk parent pid is "<<getppid()<<"\n";
+       //std::cout<<"This is clk.o and current time is "<<*shmaddr<<"\n" ;
    }
 
 }

@@ -27,7 +27,14 @@ struct processData {
 //don't mess with this variable//
 int* shmaddr;                  //
 //===============================
-
+struct process{
+  long mtype;
+  int id;
+  int pid;
+  int priority;
+  int arrivalTime;
+  int runtime;
+};
 
 
 int getClk()
