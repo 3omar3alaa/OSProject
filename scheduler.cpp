@@ -3,10 +3,10 @@
 using namespace std;
 #include "headers.h"
 
-//structs
+//Structs
 struct processI {
 	long mtype;
-	int arrivaltime;
+	int arrivalTime;
 	int priority;
 	int runningTime;
 	int id;
@@ -21,6 +21,7 @@ bool gotNewEvent;
 int msgqid;
 processI* currentProcess;
 long lastRun;
+int deletePid;
 
 //Functions
 void startRR();
@@ -31,11 +32,11 @@ void RoundRobinIt();
 void unhandleClkSignal(int);
 void runProcess(processI*);
 void ClearResources(int);
-void testSendProcess();
 
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
     
-	cout << "Scheduler started with algorithm number " << argv[0] << endl;
+	cout << "Scheduler started with algorithm number " << argv[0] <<" and pid of "<<getpid()<< endl;
 	signal(SIGINT, ClearResources);
 	int whichAlgo = *(argv[0]) - '0';
 
@@ -53,9 +54,7 @@ int main(int argc, char* argv[]) {
 		break;
 	}
 	while (true) {
-		cout << "Scheduler sleeping ..." << endl;
 		pause();
-		cout << "Resuming" << endl;
 		while(gotNewEvent)
 			RoundRobinIt();
 	}
@@ -67,6 +66,7 @@ void startRR() {
 	isProcessing = false;
 	gotNewEvent = false;
 	lastRun = 0;
+	deletePid = 0;
 	initClk();
 	cout << "Starting RR Algorithm with a quantum of " << quantum << endl;
 
@@ -76,7 +76,7 @@ void startRR() {
 		exit(-1);
 	}
 
-	signal(SIGCONT, handleProcessArrival);
+	signal(SIGURG, handleProcessArrival);
 	cout << "Starting handling process arrival signal" << endl;	
 
 	signal(SIGCHLD, handleChild);		 
@@ -85,9 +85,10 @@ void startRR() {
 
 void handleProcessArrival(int dumbLinux) {
 	//TODO: lock queue
+	cout << "Got a signal of process arrival" << endl;
 	int recVal = 0;
 	bool firstMsg = true;
-	struct processI arrivedProcess;
+	struct process arrivedProcess;
 	int recSize = sizeof(arrivedProcess) - sizeof(arrivedProcess.mtype);
 
 	while (recVal != -1) {
@@ -97,10 +98,15 @@ void handleProcessArrival(int dumbLinux) {
 		}
 		else if (recVal != -1){
 			cout << "Received an arrived process with id of " << arrivedProcess.id << endl;
-			arrivedProcess.pid = -1;
-			processQue.push(arrivedProcess);
+			struct processI newProcess;
+			newProcess.pid = -1;
+			newProcess.arrivalTime = arrivedProcess.arrivalTime;
+			newProcess.id = arrivedProcess.id;
+			newProcess.mtype = arrivedProcess.mtype;
+			newProcess.priority = arrivedProcess.priority;
+			newProcess.runningTime = arrivedProcess.runtime;
+			processQue.push(newProcess);
 			if (!isProcessing) {
-				cout << "Waking up RoundRobinIt!"<<endl;
 				gotNewEvent = true;
 			}
 		}
@@ -111,6 +117,7 @@ void handleProcessArrival(int dumbLinux) {
 void handleClkSignal(int dumbLinux) {
 	//TODO: lock queue
 	//TODO: Not efficient; calls not per quantum
+	cout << "SCH: Received signal from clock" << endl;
 	gotNewEvent = true;
 }
 
@@ -119,11 +126,13 @@ void handleChild(int dumbLinux) {
 	int childPid;
 	int   status;
 	//TODO: this assumes dead child is currentProcess
-	if ((childPid = waitpid(-1, &status, WNOHANG)) != -1)
+	if ((childPid = waitpid(-1, &status, 0)) != -1)
 	{
-		cout << "Got signal for child death :( with pid " << childPid << endl;
-		gotNewEvent = true;
-		delete(currentProcess);
+		if (WIFEXITED(status)) {
+			cout << "Got signal for child death with pid " << childPid << endl;
+			gotNewEvent = true;
+			deletePid = childPid; 
+		}
 	}
 }
 
@@ -132,15 +141,22 @@ void RoundRobinIt() {
 	if (gotNewEvent) {
 		gotNewEvent = false; //TODO: RACE CONDITION
 		bool finishedQuantum = getClk() - lastRun >= quantum;
+		if (deletePid != 0) {
+			if (currentProcess->pid == deletePid)
+				currentProcess == NULL; //TODO" delete?
+			else 
+				cout << "YAYAYAYYAYAYAYAYAYYAYAYAYAYYAYAYA" << endl; //TODO: WHAT
+			deletePid = 0;
+		}
 		if (processQue.empty() && currentProcess == NULL) {
 			cout << "Queue empty in scheduler. Unhandling clock ... " << endl;
-			signal(SIGALRM, unhandleClkSignal);
+			signal(SIGCONT, unhandleClkSignal);
 			isProcessing = false;
 			return;
 		}
 		if (!isProcessing) {
 			cout << "Starting handling clock signal" << endl;
-			signal(SIGCONT, handleClkSignal); //TODO: insert correct handled signal
+			signal(SIGCONT, handleClkSignal);
 			isProcessing = true;
 		}
 		if (currentProcess == NULL) {
@@ -157,6 +173,8 @@ void RoundRobinIt() {
 			currentProcess = &(processQue.front());
 			processQue.pop();
 			cout << "Dequeued process with id " << currentProcess->id << endl;
+			runProcess(currentProcess);
+			lastRun = getClk();
 		}
 	}	
 }
@@ -166,7 +184,6 @@ void runProcess(processI* runThis) {
 		cout << "Forking new process for the first time with id " << runThis->id << endl;
 		char pTime[100]; //TODO size?
 		sprintf(pTime, "%d", runThis->runningTime);
-		cout << pTime<<endl;
 		int pid = fork(); //TODO: if error
 		if (pid == 0) {
 			execl("./process.out", pTime, (char*)0);
@@ -186,6 +203,8 @@ void unhandleClkSignal(int dumbLinux) {	//empty because I don't want to handle i
 }
 
 void ClearResources(int) {
+	cout << "SCH: Clearing resources.." << endl;
 	destroyClk(false);
+	raise(9);
 	//TODO: clear pointers?
 }

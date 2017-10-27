@@ -22,11 +22,12 @@ int clkId = 0;
 int schId = 0;
 key_t msgQId;
 std::vector< std::vector<process> > processesVector;
+bool wakeUpSch;
 
 int main() {
-    
+	wakeUpSch = false;
 	signal(SIGINT,ClearResources);
-	signal(SIGALRM,ClockChanged);
+	signal(SIGCONT,ClockChanged);
 	//Here implement the reading of process.txt
 	int count = 0;
 	int index = 0;
@@ -89,6 +90,11 @@ int main() {
 		while(1)
 		{
 			pause();
+			if (wakeUpSch) {
+				wakeUpSch = false;
+				kill(schId, SIGURG);
+				cout << "Sent signal to " << schId << endl;
+			}
 			//cout<<"Returned from pause"<<endl;
 		}
 		//while(1){}
@@ -124,8 +130,7 @@ void ClockChanged(int)
 	  			perror("Errror in send");
 		}
 		currentArrivalIndex++;
-		cout << "Sent process to Sch. Signaling to it .." << endl;
-		kill(schId,SIGCONT);
+		wakeUpSch = true;
 	}
 }
 
