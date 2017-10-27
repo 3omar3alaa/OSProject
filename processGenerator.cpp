@@ -124,7 +124,8 @@ void ClockChanged(int)
 	  			perror("Errror in send");
 		}
 		currentArrivalIndex++;
-		kill(schId,SIGALRM);
+		cout << "Sent process to Sch. Signaling to it .." << endl;
+		kill(schId,SIGCONT);
 	}
 }
 

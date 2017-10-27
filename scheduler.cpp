@@ -35,10 +35,9 @@ void testSendProcess();
 
 int main(int argc, char* argv[]) {
     
-	cout << "Scheduler started with algorithm number " << argv[1] << endl;
+	cout << "Scheduler started with algorithm number " << argv[0] << endl;
 	signal(SIGINT, ClearResources);
-	initClk();
-	int whichAlgo = *(argv[1]) - '0';
+	int whichAlgo = *(argv[0]) - '0';
 
 	switch (whichAlgo) {
 	case 1:
@@ -54,6 +53,7 @@ int main(int argc, char* argv[]) {
 		break;
 	}
 	while (true) {
+		cout << "Scheduler sleeping ..." << endl;
 		pause();
 		cout << "Resuming" << endl;
 		while(gotNewEvent)
@@ -67,6 +67,7 @@ void startRR() {
 	isProcessing = false;
 	gotNewEvent = false;
 	lastRun = 0;
+	initClk();
 	cout << "Starting RR Algorithm with a quantum of " << quantum << endl;
 
 	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
@@ -75,7 +76,7 @@ void startRR() {
 		exit(-1);
 	}
 
-	signal(SIGCONT, handleProcessArrival); //TODO: what signal for handling process arrival?
+	signal(SIGCONT, handleProcessArrival);
 	cout << "Starting handling process arrival signal" << endl;	
 
 	signal(SIGCHLD, handleChild);		 
@@ -133,7 +134,7 @@ void RoundRobinIt() {
 		bool finishedQuantum = getClk() - lastRun >= quantum;
 		if (processQue.empty() && currentProcess == NULL) {
 			cout << "Queue empty in scheduler. Unhandling clock ... " << endl;
-			signal(SIGCONT, unhandleClkSignal); //TODO: insert correct handled signal, unhandle signal correctly
+			signal(SIGALRM, unhandleClkSignal);
 			isProcessing = false;
 			return;
 		}
