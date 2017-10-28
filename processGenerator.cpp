@@ -26,8 +26,7 @@ bool wakeUpSch;
 
 int main() {
 	wakeUpSch = false;
-	signal(SIGINT,ClearResources);
-	signal(SIGCONT,ClockChanged);
+	
 	//Here implement the reading of process.txt
 	int count = 0;
 	int index = 0;
@@ -87,6 +86,8 @@ int main() {
 		/////Toget time use the following function
 		int x= getClk();
 		//printf("current time is %d\n",x);
+		signal(SIGINT, ClearResources);
+		signal(SIGCONT, ClockChanged);
 		while(1)
 		{
 			pause();

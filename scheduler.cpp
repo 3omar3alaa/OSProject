@@ -37,7 +37,7 @@ void ClearResources(int);
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
     
-	cout << "Scheduler started with algorithm number " << argv[0] <<" and pid of "<<getpid()<< endl;
+	cout << "Scheduler started with algorithm number " << argv[0] << " and pid of " << getpid() << endl;
 	signal(SIGINT, ClearResources);
 	int whichAlgo = *(argv[0]) - '0';
 
@@ -73,8 +73,8 @@ void startRR() {
 
 	sigemptyset(&sigSet);
 	sigaddset(&sigSet, SIGCHLD);
-	sigaddset(&sigSet, SIGCONT);
 	sigaddset(&sigSet, SIGURG);
+	sigaddset(&sigSet, SIGCONT);
 
 	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
 	if (msgqid == -1) {
@@ -83,7 +83,7 @@ void startRR() {
 	}
 
 	signal(SIGURG, handleProcessArrival);
-	cout << "Starting handling process arrival signal" << endl;	
+	cout << "Starting handling process arrival signal" << endl;	//TODO: shouldn't work
 
 	signal(SIGCHLD, handleChild);		 
 	cout << "Starting handling child" << endl;
@@ -91,6 +91,7 @@ void startRR() {
 
 void handleProcessArrival(int dumbLinux) {
 	//TODO: lock queue
+	//TODO: Make it SIGCONT and diff signaler
 	cout << "Got a signal of process arrival" << endl;
 	int recVal = 0;
 	bool firstMsg = true;
@@ -123,7 +124,7 @@ void handleProcessArrival(int dumbLinux) {
 void handleClkSignal(int dumbLinux) {
 	//TODO: lock queue
 	//TODO: Not efficient; calls not per quantum
-	cout << "SCH: Received signal from clock" << endl;
+	cout << "SCH: Received signal from clock" << endl; 
 	gotNewEvent = true;
 }
 
@@ -131,9 +132,11 @@ void handleChild(int dumbLinux) {
 	//TODO: lock queue
 	int childPid;
 	int   status;
+	cout << "PAM" << endl;
 	//TODO: this assumes single dead child
-	if ((childPid = waitpid(-1, &status, 0)) != -1)
+	if ((childPid = waitpid(-1, &status, WNOHANG)) > 0)
 	{
+		cout << "UNPAM" << endl;
 		if (WIFEXITED(status)) {
 			cout << "Got signal for child death with pid " << childPid << endl;
 			gotNewEvent = true;
@@ -145,15 +148,19 @@ void handleChild(int dumbLinux) {
 void RoundRobinIt() {
 	//TODO: lock queue	
 	sigprocmask(SIG_BLOCK, &sigSet, NULL);
+	cout << "Starting RoundRobinIt" << endl;
 	if (gotNewEvent) {
 		gotNewEvent = false; //TODO: RACE CONDITION
 		bool finishedQuantum = getClk() - lastRun >= quantum;
 		if (deletePid != 0) {
-			if (currentProcess->pid == deletePid)
-				currentProcess == NULL; //TODO" delete?
+			if (currentProcess->pid == deletePid) {
+				cout << "Deleting process with id " << currentProcess->id << " and pid " << currentProcess->pid << endl;
+				currentProcess = NULL; //TODO" delete?
+			}				
 			else {
 				for (int i = 0; i < processQue.size(); i++) {
 					if (processQue.at(i).pid == deletePid) {
+						cout << "XDeletingX process with id " << processQue.at(i).id << " and pid " << processQue.at(i).pid << endl;
 						processQue.erase(processQue.begin() + i);
 						break;
 					}
@@ -175,17 +182,17 @@ void RoundRobinIt() {
 		if (currentProcess == NULL) {
 			currentProcess = &(processQue.front());
 			processQue.pop_front();
-			cout << "Dequeued process with id " << currentProcess->id << endl;
+			cout << "Dequeued process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
 			runProcess(currentProcess);
 			lastRun = getClk(); 
 		}
 		else if (finishedQuantum) {
 			kill(currentProcess->pid, SIGSTOP);
-			cout << "Stopped process with id " << currentProcess->id << endl;
+			cout << "Stopped process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
 			processQue.push_back(*currentProcess);
 			currentProcess = &(processQue.front());
 			processQue.pop_front();
-			cout << "Dequeued process with id " << currentProcess->id << endl;
+			cout << "Dequeued process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
 			runProcess(currentProcess);
 			lastRun = getClk();
 		}
@@ -195,7 +202,6 @@ void RoundRobinIt() {
 
 void runProcess(processI* runThis) {
 	if (runThis->pid == -1) {
-		cout << "Forking new process for the first time with id " << runThis->id << endl;
 		char pTime[100]; //TODO size?
 		sprintf(pTime, "%d", runThis->runningTime);
 		int pid = fork(); //TODO: if error
@@ -205,11 +211,11 @@ void runProcess(processI* runThis) {
 		else
 			runThis->pid = pid;
 
-		cout << "Ran a process with pid " << runThis->pid << endl;
+		cout << "Ran a process with id " << runThis->id << " and pid " << runThis->pid << endl;
 	}
 	else {
 		kill(runThis->pid, SIGCONT);
-		cout << "Woke up process with id " << runThis->id << endl;
+		cout << "Woke up process with id " << runThis->id << " and pid of " << runThis->pid << endl;
 	}
 }
 
