@@ -187,14 +187,16 @@ void RoundRobinIt() {
 			lastRun = getClk(); 
 		}
 		else if (finishedQuantum) {
-			kill(currentProcess->pid, SIGTSTP);
-			cout << "Stopped process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
-			processQue.push_back(*currentProcess);
-			currentProcess = &(processQue.front());
-			processQue.pop_front();
-			cout << "Dequeued process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
-			runProcess(currentProcess);
-			lastRun = getClk();
+			if (!processQue.empty()) { //CUZ LINUX SUCKS
+				kill(currentProcess->pid, SIGTSTP);
+				cout << "Stopped process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
+				processQue.push_back(*currentProcess);
+				currentProcess = &(processQue.front());
+				processQue.pop_front();
+				cout << "Dequeued process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
+				runProcess(currentProcess);
+				lastRun = getClk();
+			}
 		}
 	}	
 	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);
