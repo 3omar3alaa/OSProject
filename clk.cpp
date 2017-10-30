@@ -40,7 +40,7 @@ int main(int argc,char* argv[])
 	int ppid = getppid();
 	while(1)
 	{
-		sleep(1);
+		sleep(2);
 		(*shmaddr)++;
 		kill(ppid, SIGCONT);
 		kill(schId, SIGCONT);

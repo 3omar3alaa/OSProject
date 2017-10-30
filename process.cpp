@@ -4,36 +4,54 @@ using namespace std;
 
 //Variables
 long remainingtime;
+long lastRun = -1;
 sigset_t sigSet;
-bool pauseIt;
 struct sigaction siga;
 
 //Functions
-//static void multi_handler(int sig, siginfo_t *siginfo, void *context) {
-//	pid_t sender_pid = siginfo->si_pid;
-//	cout << "Yo: I am " << getpid() << " and " << (int)sender_pid << " woke me up ETSARAF" << endl;
-//}
+void workAround(int) {
+	raise(SIGURG);
+}
+void recordStart(int) {
+	lastRun = getClk();
+	cout << "YYYYYYYYYYYYYYYYYYYYYYYYYYYProc " << getpid() << ": lastRun now is " << lastRun << endl;
+}
+void recordEnd(int) {
+	remainingtime -= getClk() - lastRun;
+	cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXProc " << getpid() << ": remTime now is " << remainingtime << endl;
+	raise(SIGSTOP);
+}
 
 int main(int agrc, char* argv[]) {
+	initClk();
+	lastRun = getClk();
 	cout << "Proc "<<getpid()<<": Starting with running time of " << argv[0] << endl;
 	remainingtime = strtol(argv[0], NULL, 10); //TODO: No error handling
-	pauseIt = false;
+
+	//remove blocking of signals done by parent
+	sigemptyset(&sigSet);
 	sigaddset(&sigSet, SIGCHLD);
 	sigaddset(&sigSet, SIGCONT);
 	sigaddset(&sigSet, SIGURG);
-	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);
+	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);	
 
-	/*siga.sa_sigaction = *multi_handler;
-	siga.sa_flags |= SA_SIGINFO;
+	//handle SIGCONT signal
+	signal(SIGCONT, recordStart);
+	signal(SIGTSTP, recordEnd);
 
-	sigaction(SIGCONT, &siga, NULL);*/
+	//handle SIGTSTP and make it uninterruptable
+	/*sigemptyset(&sigSet);
+	sigaddset(&sigSet, SIGURG);
+	siga.sa_handler = recordEnd;
+	siga.sa_mask = sigSet;
+	siga.sa_flags = 0;
+	sigaction(SIGTSTP, &siga, NULL);*/
 
-	while (remainingtime > 0) {
-		//TODO: Linux is trash and so am I
-		sleep(1);
+	while (remainingtime > (getClk() - lastRun)) {
+		sleep(2);
 		cout << "Proc " << getpid() << ": TICK TICK" << endl;
-		remainingtime--;
 	}
 	cout << "Proc " << getpid() << ": finished! Returning ..." << endl;
+	destroyClk(false);
 	return 0;
 }
