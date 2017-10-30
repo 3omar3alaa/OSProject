@@ -1,5 +1,5 @@
-
-#include <stdio.h>      //if you don't use scanf/printf change this include
+#include <iostream> 
+using namespace std;
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -11,16 +11,27 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+//TODO: remove those where for getting pid of signaler
+#include <stdio.h>
+#include <pthread.h>
+#include <errno.h>
 #include <list>
 
 #define SHKEY 300
-
+#define MSGQKEY 11111
 
 ///==============================
 //don't mess with this variable//
 int* shmaddr;                  //
 //===============================
-
+struct process{
+  long mtype;
+  int id;
+  int pid;
+  int priority;
+  int arrivalTime;
+  int runtime;
+};
 
 
 int getClk()
@@ -42,7 +53,7 @@ void initClk()
   while((int)shmid == -1)
   	{
           //Make sure that the Clock exists
-        printf("wait, Clock not initialized yet\n");
+        cout<<"wait, Clock not initialized yet\n"<<endl;
         sleep(1);
         shmid = shmget(SHKEY, 4, 0444);
   	}
