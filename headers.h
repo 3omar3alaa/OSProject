@@ -1,4 +1,3 @@
-
 #include <iostream> 
 using namespace std;
 #include <sys/types.h>
@@ -12,6 +11,10 @@ using namespace std;
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+//TODO: remove those where for getting pid of signaler
+#include <stdio.h>
+#include <pthread.h>
+#include <errno.h>
 
 #define SHKEY 300
 #define MSGQKEY 11111
