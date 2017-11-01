@@ -87,14 +87,14 @@ int main() {
 		int x= getClk();
 		//printf("current time is %d\n",x);
 		signal(SIGINT, ClearResources);
-		signal(SIGCONT, ClockChanged);
+		signal(SIGURG, ClockChanged);
 		while(1)
 		{
 			pause();
 			if (wakeUpSch) {
 				wakeUpSch = false;
-				kill(schId, SIGURG);
-				cout << "Sent signal to " << schId << endl;
+				kill(schId, SIGCONT);
+				cout << "PGN: Sent signal to " << schId << endl;
 			}
 			//cout<<"Returned from pause"<<endl;
 		}
@@ -121,7 +121,7 @@ void ClearResources(int)
 void ClockChanged(int)
 {
 	int send_val;
-	cout<<"This is pgen and the current time is "<<getClk()<<"\n";
+	cout<<"This is pgen and the current time is "<<getClk()<<".............................\n";
 	if(arrivalTimeArr[currentArrivalIndex]==getClk() && currentArrivalIndex < processesVector.size())
 	{
 		for(int i=0;i<processesVector[currentArrivalIndex].size();i++)
