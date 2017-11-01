@@ -22,11 +22,11 @@ int clkId = 0;
 int schId = 0;
 key_t msgQId;
 std::vector< std::vector<process> > processesVector;
+bool wakeUpSch;
 
 int main() {
-    
-	signal(SIGINT,ClearResources);
-	signal(SIGALRM,ClockChanged);
+	wakeUpSch = false;
+	
 	//Here implement the reading of process.txt
 	int count = 0;
 	int index = 0;
@@ -86,9 +86,16 @@ int main() {
 		/////Toget time use the following function
 		int x= getClk();
 		//printf("current time is %d\n",x);
+		signal(SIGINT, ClearResources);
+		signal(SIGURG, ClockChanged);
 		while(1)
 		{
 			pause();
+			if (wakeUpSch) {
+				wakeUpSch = false;
+				kill(schId, SIGCONT);
+				cout << "PGN: Sent signal to " << schId << endl;
+			}
 			//cout<<"Returned from pause"<<endl;
 		}
 		//while(1){}
@@ -114,7 +121,7 @@ void ClearResources(int)
 void ClockChanged(int)
 {
 	int send_val;
-	cout<<"This is pgen and the current time is "<<getClk()<<"\n";
+	cout<<"This is pgen and the current time is "<<getClk()<<".............................\n";
 	if(arrivalTimeArr[currentArrivalIndex]==getClk() && currentArrivalIndex < processesVector.size())
 	{
 		for(int i=0;i<processesVector[currentArrivalIndex].size();i++)
@@ -124,8 +131,7 @@ void ClockChanged(int)
 	  			perror("Errror in send");
 		}
 		currentArrivalIndex++;
-		cout << "Sent process to Sch. Signaling to it .." << endl;
-		kill(schId,SIGCONT);
+		wakeUpSch = true;
 	}
 }
 
