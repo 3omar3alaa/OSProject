@@ -37,7 +37,7 @@ int main(int agrc, char* argv[]) {
 	sigaddset(&sigSet, SIGCHLD);
 	sigaddset(&sigSet, SIGCONT);
 	sigaddset(&sigSet, SIGURG);
-	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);	
+	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);
 
 	signal(SIGCONT, recordStart);
 	signal(SIGTSTP, recordEnd);
