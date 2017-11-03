@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <iomanip> 
 #include <queue>
 #include <sstream>
 #include <fstream>
+#include <cmath>
 using namespace std;
 #include "headers.h"
 
@@ -33,6 +35,11 @@ processI* currentProcess;
 long lastRun;
 int deletePid;
 sigset_t ssForNoINT;
+double sumPT;
+double sumWait;
+double sumWTA;
+double nP;
+vector<double> WTAs;
 
 //Functions
 void handleProcessArrival(int);
@@ -48,9 +55,10 @@ void log(processI*, logType);
 int main(int argc, char* argv[]) {
     
 	cout << "SCH: Starting with algorithm number " << argv[0] << " and pid of " << getpid() << endl;
-	signal(SIGINT, ClearResources);
-
-	stats << "#At time x process y state arr w total z remain y wait k\n\n";
+	signal(SIGINT, ClearResources); sumPT = nP = sumWait = 0;
+	cout << setprecision(2);
+	stats << setprecision(2);
+	stats << "#At time x process y state arr w total z remain y wait k\n";
 
 	int whichAlgo = *(argv[0]) - '0';
 
@@ -115,6 +123,7 @@ void handleProcessArrival(int) {
 			cout << "SCH: Error in receiving arrived process from PG! Skipping .." << endl;
 		}
 		else if (recVal != -1){
+			nP++;
 			cout << "SCH: Received an arrived process with id of " << arrivedProcess.id << endl;
 			struct processI newProcess;
 			newProcess.pid = -1;
@@ -122,7 +131,7 @@ void handleProcessArrival(int) {
 			newProcess.id = arrivedProcess.id;
 			newProcess.mtype = arrivedProcess.mtype;
 			newProcess.priority = arrivedProcess.priority;
-			newProcess.processTime = newProcess.remTime = arrivedProcess.runtime;
+			sumPT += newProcess.processTime = newProcess.remTime = arrivedProcess.runtime;
 			processQue.push_back(newProcess);
 			if (!isProcessing) {
 				gotNewEvent = true;
@@ -245,7 +254,7 @@ bool runProcess(processI* runThis) {
 }
 
 void log(processI* p, logType lt) {
-	int now = getClk();
+	double now = getClk();
 	switch (lt) {
 	case Started:
 		stats << "At time " << now << " process " << p->id << " started arr " << p->arrivalTime << " total " << p->processTime << " remain " << p->remTime << " wait " << ((now - p->arrivalTime) - (p->processTime - p->remTime)) << "\n";
@@ -257,8 +266,14 @@ void log(processI* p, logType lt) {
 		stats << "At time " << now << " process " << p->id << " resumed arr " << p->arrivalTime << " total " << p->processTime << " remain " << p->remTime << " wait " << ((now - p->arrivalTime) - (p->processTime - p->remTime)) << "\n";
 		break;
 	case Finished:
-		stats << "At time " << now << " process " << p->id << " finished arr " << p->arrivalTime << " total " << p->processTime << " remain 0 " << " wait " << ((now - p->arrivalTime) - (p->processTime)) << " TA " << (now - p->arrivalTime) << " WTA " << (now - p->arrivalTime) / p->processTime << "\n";
+	{
+		double wait = ((now - p->arrivalTime) - (p->processTime));
+		double WTA = (now - p->arrivalTime) / p->processTime;
+		sumWait += wait; sumWTA += WTA;
+		WTAs.push_back(WTA);
+		stats << "At time " << now << " process " << p->id << " finished arr " << p->arrivalTime << " total " << p->processTime << " remain 0 " << " wait " << wait << " TA " << (now - p->arrivalTime) << " WTA " << WTA << "\n";
 		break;
+	}
 	default:
 		cout  << "SCH: Logging error!" << endl;
 		stats << "Logging error!" << endl;
@@ -267,10 +282,23 @@ void log(processI* p, logType lt) {
 }
 
 void ClearResources(int) {
+	double t = getClk(); //TODO: make it for sure
 	cout << "SCH: Logging data to file" << endl; 
-	ofstream out("scheduler.log");
-	out << stats.str();
-	out.close(); 
+	ofstream outL("scheduler.log");
+	outL << stats.str();
+	outL.close(); 
+
+	cout << "SCH: Calculating performance" << endl;
+	ofstream outP("scheduler.perf");
+	outP << setprecision(2)<<"CPU utilization=" << ((sumPT / t) * 100) << "%" << endl;
+	outP << "Avg WTA=" << sumWTA / nP << endl;
+	outP << "Avg Waiting=" << sumWait / nP << endl;
+	int sigma = 0;
+	for (int i = 0; i < WTAs.size(); i++) {
+		sigma += pow(2, WTAs.at(i) - sumWTA/nP);
+	}
+	outP << "Std WTA=" << sqrt(sigma / nP) << endl;
+	outP.close();
 
 	cout << "SCH: Clearing resources.." << endl;
 	destroyClk(false);

@@ -68,6 +68,7 @@ this is the end of simulation it terminates all the system and release resources
 
 void destroyClk(bool terminateAll)
 {
+	cout << "CLK: Deleting shared memory" << endl;
     shmdt(shmaddr);
     //if(terminateAll)
       //killpg(getpgrp(),SIGINT);
