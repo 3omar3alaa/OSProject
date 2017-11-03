@@ -11,10 +11,6 @@ using namespace std;
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-//TODO: remove those where for getting pid of signaler
-#include <stdio.h>
-#include <pthread.h>
-#include <errno.h>
 
 #define SHKEY 300
 #define MSGQKEY 11111
@@ -73,6 +69,6 @@ this is the end of simulation it terminates all the system and release resources
 void destroyClk(bool terminateAll)
 {
     shmdt(shmaddr);
-    if(terminateAll)
-      killpg(getpgrp(),SIGINT);
+    //if(terminateAll)
+      //killpg(getpgrp(),SIGINT);
 }

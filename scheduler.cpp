@@ -1,20 +1,30 @@
 #include <stdio.h>
 #include <queue>
+#include <sstream>
+#include <fstream>
 using namespace std;
 #include "headers.h"
 
-//Structs
+//Structs & Enums
 struct processI {
 	long mtype;
 	int arrivalTime;
 	int priority;
-	int runningTime;
+	int processTime;
+	int remTime;
 	int id;
 	int pid;
+};
+enum logType {
+	Started,
+	Stopped,
+	Resumed,
+	Finished
 };
 
 //Variables
 deque<processI> processQue;
+stringstream stats;
 int quantum;
 bool isProcessing;
 bool gotNewEvent;
@@ -27,17 +37,21 @@ sigset_t ssForNoINT;
 //Functions
 void handleProcessArrival(int);
 void handleClkSignal(int);
-void handleChild(int)
+void handleChild(int);
 void ClearResources(int);
 void startRR();
 void RoundRobinIt();
 bool runProcess(processI*);
+void log(processI*, logType);
 
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
     
 	cout << "SCH: Starting with algorithm number " << argv[0] << " and pid of " << getpid() << endl;
 	signal(SIGINT, ClearResources);
+
+	stats << "#At time x process y state arr w total z remain y wait k\n\n";
+
 	int whichAlgo = *(argv[0]) - '0';
 
 	switch (whichAlgo) {
@@ -108,7 +122,7 @@ void handleProcessArrival(int) {
 			newProcess.id = arrivedProcess.id;
 			newProcess.mtype = arrivedProcess.mtype;
 			newProcess.priority = arrivedProcess.priority;
-			newProcess.runningTime = arrivedProcess.runtime;
+			newProcess.processTime = newProcess.remTime = arrivedProcess.runtime;
 			processQue.push_back(newProcess);
 			if (!isProcessing) {
 				gotNewEvent = true;
@@ -145,12 +159,14 @@ void RoundRobinIt() {
 		if (deletePid > 0) {
 			if (currentProcess->pid == deletePid) {
 				cout << "SCH: Deleting process with id " << currentProcess->id << " and pid " << currentProcess->pid << endl;
+				log(currentProcess, Finished);
 				currentProcess = NULL;
 			}				
 			else {
 				for (int i = 0; i < processQue.size(); i++) {
 					if (processQue.at(i).pid == deletePid) {
 						cout << "SCH: XDeletingX process with id " << processQue.at(i).id << " and pid " << processQue.at(i).pid << endl;
+						log(&processQue.at(i), Finished);
 						processQue.erase(processQue.begin() + i);
 						break;
 					}
@@ -181,7 +197,9 @@ void RoundRobinIt() {
 			else if (finishedQuantum) {
 				if (!processQue.empty()) { 
 					kill(currentProcess->pid, SIGTSTP);
+					currentProcess->remTime -= quantum;
 					cout << "SCH: Stopped process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
+					log(currentProcess, Stopped);
 					processQue.push_back(*currentProcess);
 					currentProcess = &(processQue.front());
 					processQue.pop_front();
@@ -203,27 +221,57 @@ void RoundRobinIt() {
 bool runProcess(processI* runThis) {
 	if (runThis->pid == -1) {
 		char pTime[6]; //assuming default max value of PID
-		sprintf(pTime, "%d", runThis->runningTime);
+		sprintf(pTime, "%d", runThis->processTime);
 		int pid = fork();
 		if (pid == -1) {
 			cout << "SCH: Error while trying to fork process with id " << runThis->id << endl;
 			return false;
 		}
-		if (pid == 0)
+		if (pid == 0) 
 			execl("./process.out", pTime, (char*)0);
-		else
+		else {
 			runThis->pid = pid;
+			log(runThis, Started);
+		}	
 
 		cout << "SCH: Ran a process with id " << runThis->id << " and pid " << runThis->pid << endl;
 	}
 	else {
 		kill(runThis->pid, SIGCONT);
+		log(runThis, Resumed);
 		cout << "SCH: Woke up process with id " << runThis->id << " and pid of " << runThis->pid << endl;
 	}
 	return true;
 }
 
+void log(processI* p, logType lt) {
+	int now = getClk();
+	switch (lt) {
+	case Started:
+		stats << "At time " << now << " process " << p->id << " started arr " << p->arrivalTime << " total " << p->processTime << " remain " << p->remTime << " wait " << ((now - p->arrivalTime) - (p->processTime - p->remTime)) << "\n";
+		break;
+	case Stopped:
+		stats << "At time " << now << " process " << p->id << " stopped arr " << p->arrivalTime << " total " << p->processTime << " remain " << p->remTime << " wait " << ((now - p->arrivalTime) - (p->processTime - p->remTime)) << "\n";
+		break;
+	case Resumed:
+		stats << "At time " << now << " process " << p->id << " resumed arr " << p->arrivalTime << " total " << p->processTime << " remain " << p->remTime << " wait " << ((now - p->arrivalTime) - (p->processTime - p->remTime)) << "\n";
+		break;
+	case Finished:
+		stats << "At time " << now << " process " << p->id << " finished arr " << p->arrivalTime << " total " << p->processTime << " remain 0 " << " wait " << ((now - p->arrivalTime) - (p->processTime)) << " TA " << (now - p->arrivalTime) << " WTA " << (now - p->arrivalTime) / p->processTime << "\n";
+		break;
+	default:
+		cout  << "SCH: Logging error!" << endl;
+		stats << "Logging error!" << endl;
+		break;
+	}
+}
+
 void ClearResources(int) {
+	cout << "SCH: Logging data to file" << endl; 
+	ofstream out("scheduler.log");
+	out << stats.str();
+	out.close(); 
+
 	cout << "SCH: Clearing resources.." << endl;
 	destroyClk(false);
 	raise(9);
