@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <list>
+#include <algorithm>
 using namespace std;
 #include "headers.h"
 
@@ -61,6 +62,9 @@ bool runProcess(processI*);
 void log(processI*, logType);
 void SRTNIt();
 bool haslessProcessTime(processI p1, processI p2);
+void startHPF();
+bool priority(processI, processI);
+void HPFIt();
 
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
@@ -75,6 +79,12 @@ int main(int argc, char* argv[]) {
 
 	switch (whichAlgo) {
 	case 1:
+		startHPF();
+		while (true) {
+			pause();
+			while (gotNewEvent)
+				HPFIt();
+		}
 		break;
 	case 2:
 		startSRTN();
@@ -100,6 +110,33 @@ int main(int argc, char* argv[]) {
 	}    
 }
 
+void startHPF() {
+	isProcessing = false;
+	gotNewEvent = false;
+	lastRun = 0;
+	deletePid = 0;
+	initClk();
+	cout << "Starting Non-Preemptive Highest Priority First Algorithm \n";
+
+	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
+	if (msgqid == -1) {
+		cout << "SCH: Error in getting message queue, Source: Scheduler" << endl;
+		exit(-1);
+	}
+
+	signal(SIGCONT, handleProcessArrival);
+	cout << "SCH: Starting handling process arrival signal" << endl;
+	signal(SIGCHLD, handleChild);
+	cout << "SCH: Starting handling child" << endl;
+	signal(SIGURG, handleClkSignal);
+
+	sigemptyset(&ssForNoINT);
+	sigaddset(&ssForNoINT, SIGURG);
+	sigprocmask(SIG_BLOCK, &ssForNoINT, NULL);
+	sigaddset(&ssForNoINT, SIGCHLD);
+	sigaddset(&ssForNoINT, SIGCONT);
+}
+
 void startSRTN()
 {
 	isProcessing = false;
@@ -120,7 +157,6 @@ void startSRTN()
 	signal(SIGCHLD, handleChild);		 
 	cout << "SCH: Starting handling child" << endl;
 }
-
 
 void startRR() {
 	quantum = 4;
@@ -172,7 +208,12 @@ void handleProcessArrival(int) {
 			newProcess.mtype = arrivedProcess.mtype;
 			newProcess.priority = arrivedProcess.priority;
 			sumPT += newProcess.processTime = newProcess.remTime = arrivedProcess.runtime;
-			if(whichAlgo == 2)
+			if (whichAlgo == 1) {
+				processQue.push_back(newProcess);
+				if (!processQue.empty())
+				sort(processQue.begin(), processQue.end(), priority);
+			}
+			else if (whichAlgo == 2)
 				SRTNprocesslist.push_back(newProcess);
 			else if(whichAlgo == 3)
 				processQue.push_back(newProcess);
@@ -270,6 +311,43 @@ void RoundRobinIt() {
 	sigprocmask(SIG_UNBLOCK, &ssForNoINT, NULL);
 }
 
+void HPFIt() {
+	sigprocmask(SIG_BLOCK, &ssForNoINT, NULL);
+	cout << "SCH: Starting HPFIt" << endl;
+	if (gotNewEvent) {
+		gotNewEvent = false;
+		if (deletePid > 0) {
+			if (currentProcess->pid == deletePid) {
+				cout << "SCH: Deleting process with id " << currentProcess->id << " and pid " << currentProcess->pid << endl;
+				log(currentProcess, Finished);
+				currentProcess = NULL;
+			}
+			deletePid = 0;
+		}
+		if (processQue.empty() && currentProcess == NULL) {
+			cout << "SCH: Queue empty in scheduler. Blocking clock ... " << endl;
+			sigemptyset(&ssForNoINT);
+			sigaddset(&ssForNoINT, SIGCHLD);
+			sigaddset(&ssForNoINT, SIGCONT);
+			isProcessing = false;
+		}
+		else {
+			if (!isProcessing) {
+				cout << "SCH: Unblocking clock signal" << endl;
+				sigaddset(&ssForNoINT, SIGURG);
+				isProcessing = true;
+			}
+			if (currentProcess == NULL) {
+				currentProcess = &(processQue.front());
+				processQue.pop_front();
+				cout << "SCH: Dequeued process with id " << currentProcess->id << " and pid of " << currentProcess->pid << endl;
+				runProcess(currentProcess);
+			}
+		}
+	}
+	sigprocmask(SIG_UNBLOCK, &ssForNoINT, NULL);
+}
+
 bool haslessProcessTime(processI p1, processI p2)
 {
 	return p1.processTime < p2.processTime; 
@@ -363,8 +441,6 @@ void SRTNIt()
 		currentProcess = NULL;
 }
 
-
-
 bool runProcess(processI* runThis) {
 	if (runThis->pid == -1) {
 		char pTime[6]; //assuming default max value of PID
@@ -441,4 +517,18 @@ void ClearResources(int) {
 	cout << "SCH: Clearing resources.." << endl;
 	destroyClk(false);
 	raise(9);
+}
+
+bool priority(processI px1, processI px2) {
+	if (px1.priority == px2.priority)
+	{
+		if (px1.processTime != px2.processTime)
+			return (px1.processTime < px2.processTime);
+		else if (px1.arrivalTime != px2.arrivalTime)
+			return (px1.arrivalTime < px2.arrivalTime);
+		else
+			return (px1.id < px2.id);
+	}
+	else
+		return  (px1.priority > px2.priority);
 }
