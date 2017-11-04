@@ -49,8 +49,8 @@ int main() {
 	cout<<"Please choose the scheduler algorithm you want\n";
 	cout<<"1. non-preemptive HPF\n2. Shortest Remaining time Next\n3. Round Robin\n";
 	cin>>scheduler;
-	cout<<"The pgen id is "<<getpid()<<"\n";
-	cout<<"The pgen grp id is "<<getpgrp()<<"\n";
+	//cout<<"The pgen id is "<<getpid()<<"\n";
+	//cout<<"The pgen grp id is "<<getpgrp()<<"\n";
 	// 2-Initiate and create Scheduler and Clock processes.
 	//Initiating the Scheduler
 	schId = fork();
@@ -94,7 +94,7 @@ int main() {
 			if (wakeUpSch) {
 				wakeUpSch = false;
 				kill(schId, SIGCONT);
-				cout << "PGN: Sent signal to " << schId << endl;
+				cout << "PGEN: Sent signal to " << schId << endl;
 			}
 			//cout<<"Returned from pause"<<endl;
 		}
@@ -121,7 +121,7 @@ void ClearResources(int)
 void ClockChanged(int)
 {
 	int send_val;
-	cout<<"This is pgen and the current time is "<<getClk()<<".............................\n";
+	cout<<"PGEN: the current time is "<<getClk()<<".............................\n";
 	if(arrivalTimeArr[currentArrivalIndex]==getClk() && currentArrivalIndex < processesVector.size())
 	{
 		for(int i=0;i<processesVector[currentArrivalIndex].size();i++)
