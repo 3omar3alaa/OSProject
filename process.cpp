@@ -27,16 +27,6 @@ void recordEnd(int) {
 		raise(SIGSTOP);
 }
 
-void sendRemTime(int)
-{
-	cout<<"PRC: SIGURG Handler\n";
-	pTime p;
-	p.remainingtime = remainingtime - (getClk() - lastRun);
-	cout<<"PRC: lastRun is "<<lastRun <<" getClk is "<< getClk() << " remainingtime is "<<remainingtime<<endl;
-	int send_val = msgsnd(PrcmsgQId, &p, sizeof(p)-sizeof(p.mtype), IPC_NOWAIT);
-	if(send_val == -1)
-		cout<<"PRC: Error in sending the remainingtime to the Scheduler\n";
-}
 //////////////////////////////////////////////////////////////////
 
 int main(int agrc, char* argv[]) {
@@ -45,14 +35,6 @@ int main(int agrc, char* argv[]) {
 	lastRun = getClk();
 	cout << "PRC " << getpid() << ": Starting with running time of " << argv[0] << endl;
 	remainingtime = strtol(argv[0], NULL, 10); //TODO: No error handling
-	//Getting the message queue initiated by the Scheduler 
-	PrcmsgQId = msgget(PRCMSGQKEY, IPC_CREAT|0644);
-	if(PrcmsgQId == -1)
-	{	
-	    cout<<"Error in create\n";
-	    exit(-1);
-	}
-
 	
 	//remove blocking of signals done by parent
 	sigemptyset(&sigSet);
@@ -61,7 +43,6 @@ int main(int agrc, char* argv[]) {
 	sigaddset(&sigSet, SIGURG);
 	sigprocmask(SIG_UNBLOCK, &sigSet, NULL);
 
-	signal(SIGURG, sendRemTime);
 	signal(SIGCONT, recordStart);
 	signal(SIGTSTP, recordEnd);
 

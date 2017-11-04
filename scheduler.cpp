@@ -29,6 +29,7 @@ enum logType {
 deque<processI> processQue;
 list <processI> SRTNprocesslist;
 stringstream stats;
+long remainingtime;
 key_t PrcmsgQId;
 int whichAlgo;
 int quantum;
@@ -47,6 +48,7 @@ double nP;
 vector<double> WTAs;
 
 //Functions
+void calculateRemTime(processI* p);
 void handleProcessArrival(int);
 void handleClkSignal(int);
 void handleChild(int);
@@ -58,6 +60,7 @@ bool runProcess(processI*);
 void log(processI*, logType);
 void SRTNIt();
 bool haslessProcessTime(processI p1, processI p2);
+
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
     
@@ -67,16 +70,6 @@ int main(int argc, char* argv[]) {
 	stats << setprecision(2);
 	stats << "#At time x process y state arr w total z remain y wait k\n";
 
-	PrcmsgQId = msgget(PRCMSGQKEY, IPC_CREAT|0644);
-	if(PrcmsgQId == -1)
-	{	
-	    perror("Error in create");
-	    exit(-1);
-	}
-	else 
-	{
-		cout << "SCH: The process message queue was initizalized correctly\n";
-	}
 	whichAlgo = *(argv[0]) - '0';
 
 	switch (whichAlgo) {
@@ -283,13 +276,17 @@ bool haslessProcessTime(processI p1, processI p2)
 	return p1.processTime < p2.processTime; 
 }
 
+void calculateRemTime(processI* p)
+{
+	p-> processTime = p->processTime - (getClk() - lastRun);
+	lastRun = getClk();
+}
+
 void SRTNIt()
 {
 	gotNewEvent = false;
-	cout<<"SCH: SRTNIt started\n";
 	if(!SRTNprocesslist.empty())
 	{
-		cout<<"SCH: SRTNprocesslist is NOT Empty\n";
 		if(currentProcess != NULL)
 		{
 			if (currentProcess->pid == deletePid)
@@ -298,21 +295,13 @@ void SRTNIt()
 				SRTNprocesslist.pop_front();
 				currentProcess = &SRTNprocesslist.front();
 				runProcess(currentProcess);
-				cout <<"SCH: Process of id "<< currentProcess -> id <<" has started\n";
+				lastRun = getClk();
+				cout <<"SCH: Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> processTime <<"has started\n";
 			}
 			else 
 			{
-				kill(currentProcess->pid, SIGURG);
-				struct pTime p;
-				int recVal = msgrcv(PrcmsgQId, &p, sizeof(long), 0, !IPC_NOWAIT);
-				if(recVal == -1)
-					cout<<"SCH: Error in receiving the message from the process\n";
-				else
-					{
-						currentProcess->processTime = p.remainingtime;
-						cout<<"SCH: The remainingtime of the current Process is "<<currentProcess->processTime<<endl;
-					}
-
+				calculateRemTime(currentProcess);
+				cout<<"SCH: The remainingtime of the current Process is "<<currentProcess->processTime<<endl;
 				SRTNprocesslist.sort(haslessProcessTime);
 
 				if(currentProcess->pid != SRTNprocesslist.front().pid)
@@ -320,10 +309,11 @@ void SRTNIt()
 					kill(currentProcess->pid, SIGTSTP);
 					currentProcess = &SRTNprocesslist.front();
 					runProcess(currentProcess);
+					cout <<"SCH: Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> processTime <<"has started\n";
 				}
 				else 
 				{
-					cout << "SCH: The currentProcess is still running\n";
+					cout << "SCH: The currentProcess is still running and has processTime of "<<currentProcess->processTime <<"\n";
 				}
 			}
 		
@@ -331,14 +321,13 @@ void SRTNIt()
 		else
 		{
 			SRTNprocesslist.sort(haslessProcessTime);
-			cout<<"SCH: Entered in else condition\n";
 			currentProcess = &SRTNprocesslist.front();
 			runProcess(currentProcess);
-			cout <<"SCH: Process of id "<< currentProcess -> id <<" has started\n";
+			lastRun = getClk();
+			cout <<"SCH: Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> processTime <<"has started\n";
 		}
 		
 	}
-	cout<<"SCH: SRTNIt ended\n";
 }
 
 
