@@ -14,6 +14,7 @@ using namespace std;
 
 #define SHKEY 300
 #define MSGQKEY 11111
+#define PRCMSGQKEY 22222
 
 ///==============================
 //don't mess with this variable//
@@ -28,6 +29,11 @@ struct process{
   int runtime;
 };
 
+struct pTime 
+{
+  long mtype;
+  long remainingtime;
+};
 
 int getClk()
 {

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <cmath>
+#include <list>
 using namespace std;
 #include "headers.h"
 
@@ -26,11 +27,15 @@ enum logType {
 
 //Variables
 deque<processI> processQue;
+list <processI> SRTNprocesslist;
 stringstream stats;
+key_t PrcmsgQId;
+int whichAlgo;
 int quantum;
 bool isProcessing;
 bool gotNewEvent;
 int msgqid;
+//changed current process to NULL
 processI* currentProcess;
 long lastRun;
 int deletePid;
@@ -46,11 +51,13 @@ void handleProcessArrival(int);
 void handleClkSignal(int);
 void handleChild(int);
 void ClearResources(int);
+void startSRTN();
 void startRR();
 void RoundRobinIt();
 bool runProcess(processI*);
 void log(processI*, logType);
-
+void SRTNIt();
+bool haslessProcessTime(processI p1, processI p2);
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
     
@@ -60,12 +67,30 @@ int main(int argc, char* argv[]) {
 	stats << setprecision(2);
 	stats << "#At time x process y state arr w total z remain y wait k\n";
 
-	int whichAlgo = *(argv[0]) - '0';
+	PrcmsgQId = msgget(PRCMSGQKEY, IPC_CREAT|0644);
+	if(PrcmsgQId == -1)
+	{	
+	    perror("Error in create");
+	    exit(-1);
+	}
+	else 
+	{
+		cout << "SCH: The process message queue was initizalized correctly\n";
+	}
+	whichAlgo = *(argv[0]) - '0';
 
 	switch (whichAlgo) {
 	case 1:
 		break;
 	case 2:
+		startSRTN();
+		while(true)
+		{
+			pause();
+			cout<<"SCH: Woke up from pause\n";
+			while(gotNewEvent)
+				SRTNIt();
+		}
 		break;
 	case 3:
 		startRR();
@@ -82,6 +107,28 @@ int main(int argc, char* argv[]) {
 	}    
 }
 
+void startSRTN()
+{
+	isProcessing = false;
+	gotNewEvent = false;
+	lastRun = 0;
+	deletePid = 0;
+	initClk();
+	cout << "SCH: Starting SRTN Algorithm\n";
+
+	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
+	if (msgqid == -1) {
+		cout << "SCH: Error in getting message queue, Source: Scheduler" << endl;
+		exit(-1);
+	}
+
+	signal(SIGCONT, handleProcessArrival);
+	cout << "SCH: Starting handling process arrival signal" << endl;
+	signal(SIGCHLD, handleChild);		 
+	cout << "SCH: Starting handling child" << endl;
+}
+
+
 void startRR() {
 	quantum = 4;
 	isProcessing = false;
@@ -89,7 +136,7 @@ void startRR() {
 	lastRun = 0;
 	deletePid = 0;
 	initClk();
-	cout << "SCH: Starting RR Algorithm with a quantum of " << quantum << endl;
+	cout << "SCH: Starting RR Algorithm " << endl;
 
 	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
 	if (msgqid == -1) {
@@ -132,7 +179,10 @@ void handleProcessArrival(int) {
 			newProcess.mtype = arrivedProcess.mtype;
 			newProcess.priority = arrivedProcess.priority;
 			sumPT += newProcess.processTime = newProcess.remTime = arrivedProcess.runtime;
-			processQue.push_back(newProcess);
+			if(whichAlgo == 2)
+				SRTNprocesslist.push_back(newProcess);
+			else if(whichAlgo == 3)
+				processQue.push_back(newProcess);
 			if (!isProcessing) {
 				gotNewEvent = true;
 			}
@@ -147,6 +197,7 @@ void handleClkSignal(int) {
 }
 
 void handleChild(int) {
+	cout<<"SCH: Hello from SIGCHLD handler\n";
 	int childPid;
 	int   status;
 	if ((childPid = waitpid(-1, &status, WNOHANG)) > 0)
@@ -227,6 +278,71 @@ void RoundRobinIt() {
 	sigprocmask(SIG_UNBLOCK, &ssForNoINT, NULL);
 }
 
+bool haslessProcessTime(processI p1, processI p2)
+{
+	return p1.processTime < p2.processTime; 
+}
+
+void SRTNIt()
+{
+	gotNewEvent = false;
+	cout<<"SCH: SRTNIt started\n";
+	if(!SRTNprocesslist.empty())
+	{
+		cout<<"SCH: SRTNprocesslist is NOT Empty\n";
+		if(currentProcess != NULL)
+		{
+			if (currentProcess->pid == deletePid)
+			{
+				cout<<"SCH: Deleting the front process and starting another\n";
+				SRTNprocesslist.pop_front();
+				currentProcess = &SRTNprocesslist.front();
+				runProcess(currentProcess);
+				cout <<"SCH: Process of id "<< currentProcess -> id <<" has started\n";
+			}
+			else 
+			{
+				kill(currentProcess->pid, SIGURG);
+				struct pTime p;
+				int recVal = msgrcv(PrcmsgQId, &p, sizeof(long), 0, !IPC_NOWAIT);
+				if(recVal == -1)
+					cout<<"SCH: Error in receiving the message from the process\n";
+				else
+					{
+						currentProcess->processTime = p.remainingtime;
+						cout<<"SCH: The remainingtime of the current Process is "<<currentProcess->processTime<<endl;
+					}
+
+				SRTNprocesslist.sort(haslessProcessTime);
+
+				if(currentProcess->pid != SRTNprocesslist.front().pid)
+				{
+					kill(currentProcess->pid, SIGTSTP);
+					currentProcess = &SRTNprocesslist.front();
+					runProcess(currentProcess);
+				}
+				else 
+				{
+					cout << "SCH: The currentProcess is still running\n";
+				}
+			}
+		
+		}
+		else
+		{
+			SRTNprocesslist.sort(haslessProcessTime);
+			cout<<"SCH: Entered in else condition\n";
+			currentProcess = &SRTNprocesslist.front();
+			runProcess(currentProcess);
+			cout <<"SCH: Process of id "<< currentProcess -> id <<" has started\n";
+		}
+		
+	}
+	cout<<"SCH: SRTNIt ended\n";
+}
+
+
+
 bool runProcess(processI* runThis) {
 	if (runThis->pid == -1) {
 		char pTime[6]; //assuming default max value of PID
@@ -282,6 +398,7 @@ void log(processI* p, logType lt) {
 }
 
 void ClearResources(int) {
+	msgctl(PrcmsgQId, IPC_RMID, (struct msqid_ds *) 0);
 	double t = getClk(); //TODO: make it for sure
 	cout << "SCH: Logging data to file" << endl; 
 	ofstream outL("scheduler.log");
