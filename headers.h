@@ -28,11 +28,6 @@ struct process{
   int runtime;
 };
 
-struct pTime 
-{
-  long mtype;
-  long remainingtime;
-};
 
 int getClk()
 {

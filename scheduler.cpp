@@ -18,6 +18,7 @@ struct processI {
 	int id;
 	int pid;
 };
+
 enum logType {
 	Started,
 	Stopped,
@@ -80,7 +81,6 @@ int main(int argc, char* argv[]) {
 		while(true)
 		{
 			pause();
-			cout<<"SCH: Woke up from pause\n";
 			while(gotNewEvent)
 				SRTNIt();
 		}
@@ -190,7 +190,6 @@ void handleClkSignal(int) {
 }
 
 void handleChild(int) {
-	cout<<"SCH: Hello from SIGCHLD handler\n";
 	int childPid;
 	int   status;
 	if ((childPid = waitpid(-1, &status, WNOHANG)) > 0)
@@ -278,7 +277,7 @@ bool haslessProcessTime(processI p1, processI p2)
 
 void calculateRemTime(processI* p)
 {
-	p-> processTime = p->processTime - (getClk() - lastRun);
+	p-> remTime = p->remTime - (getClk() - lastRun);
 	lastRun = getClk();
 }
 
@@ -291,29 +290,52 @@ void SRTNIt()
 		{
 			if (currentProcess->pid == deletePid)
 			{
-				cout<<"SCH: Deleting the front process and starting another\n";
+				cout<<"SCH: Deleting the front process\n";
+				log(currentProcess,Finished);
 				SRTNprocesslist.pop_front();
-				currentProcess = &SRTNprocesslist.front();
-				runProcess(currentProcess);
-				lastRun = getClk();
-				cout <<"SCH: Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> processTime <<"has started\n";
+				if(!SRTNprocesslist.empty())
+				{
+					currentProcess = &SRTNprocesslist.front();
+					runProcess(currentProcess);
+					if(currentProcess->processTime == currentProcess ->remTime)
+						{
+							log(currentProcess,Started);
+							cout <<"SCH: Started Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> remTime <<"\n";
+						}
+					else 
+						{
+							log(currentProcess,Resumed);
+							cout <<"SCH: Resumed Process of id "<< currentProcess -> id <<" and remaining time "<< currentProcess-> remTime <<"\n";
+						}
+					lastRun = getClk();
+				}
 			}
 			else 
 			{
 				calculateRemTime(currentProcess);
-				cout<<"SCH: The remainingtime of the current Process is "<<currentProcess->processTime<<endl;
+				cout<<"SCH: The remaining time of the current Process is "<< currentProcess->remTime <<endl;
 				SRTNprocesslist.sort(haslessProcessTime);
 
 				if(currentProcess->pid != SRTNprocesslist.front().pid)
 				{
 					kill(currentProcess->pid, SIGTSTP);
+					log(currentProcess,Stopped);
 					currentProcess = &SRTNprocesslist.front();
 					runProcess(currentProcess);
-					cout <<"SCH: Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> processTime <<"has started\n";
+					if(currentProcess->processTime == currentProcess ->remTime)
+					{
+						log(currentProcess,Started);
+						cout <<"SCH: Started Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> remTime <<"\n";
+					}
+					else 
+					{
+						log(currentProcess,Resumed);
+						cout <<"SCH: Resumed Process of id "<< currentProcess -> id <<" and remaining time "<< currentProcess-> remTime <<"\n";
+					}
 				}
 				else 
 				{
-					cout << "SCH: The currentProcess is still running and has processTime of "<<currentProcess->processTime <<"\n";
+					cout << "SCH: The currentProcess is still running and has remaining time of "<<currentProcess->remTime <<"\n";
 				}
 			}
 		
@@ -324,10 +346,21 @@ void SRTNIt()
 			currentProcess = &SRTNprocesslist.front();
 			runProcess(currentProcess);
 			lastRun = getClk();
-			cout <<"SCH: Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> processTime <<"has started\n";
+			if(currentProcess->processTime == currentProcess ->remTime)
+			{
+				log(currentProcess,Started);
+				cout <<"SCH: Started Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> remTime <<"\n";
+			}
+			else 
+			{
+				log(currentProcess,Resumed);
+				cout <<"SCH: Resumed Process of id "<< currentProcess -> id <<" and remaining time "<< currentProcess-> remTime <<"\n";
+			}
 		}
 		
 	}
+	else
+		currentProcess = NULL;
 }
 
 
@@ -387,7 +420,6 @@ void log(processI* p, logType lt) {
 }
 
 void ClearResources(int) {
-	msgctl(PrcmsgQId, IPC_RMID, (struct msqid_ds *) 0);
 	double t = getClk(); //TODO: make it for sure
 	cout << "SCH: Logging data to file" << endl; 
 	ofstream outL("scheduler.log");

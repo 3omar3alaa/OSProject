@@ -47,7 +47,7 @@ int main() {
 	//TODO: 
 	// 1-Ask the user about the chosen scheduling Algorithm and its parameters if exists.
 	cout<<"Please choose the scheduler algorithm you want\n";
-	cout<<"1. non-preemptive HPF\n2. Shortest Remaining time Next\n3. Round Robin\n";
+	cout<<"1. non-preemptive HPF\n2. Shortest Remaining Time Next\n3. Round Robin\n";
 	cin>>scheduler;
 	//cout<<"The pgen id is "<<getpid()<<"\n";
 	//cout<<"The pgen grp id is "<<getpgrp()<<"\n";
