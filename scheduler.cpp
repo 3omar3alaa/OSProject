@@ -350,7 +350,7 @@ void HPFIt() {
 
 bool haslessProcessTime(processI p1, processI p2)
 {
-	return p1.processTime < p2.processTime; 
+	return p1.remTime <= p2.remTime; 
 }
 
 void calculateRemTime(processI* p)
@@ -377,15 +377,17 @@ void SRTNIt()
 					runProcess(currentProcess);
 					if(currentProcess->processTime == currentProcess ->remTime)
 						{
-							log(currentProcess,Started);
 							cout <<"SCH: Started Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> remTime <<"\n";
 						}
 					else 
 						{
-							log(currentProcess,Resumed);
 							cout <<"SCH: Resumed Process of id "<< currentProcess -> id <<" and remaining time "<< currentProcess-> remTime <<"\n";
 						}
 					lastRun = getClk();
+				}
+				else
+				{
+					currentProcess = NULL;
 				}
 			}
 			else 
@@ -402,12 +404,10 @@ void SRTNIt()
 					runProcess(currentProcess);
 					if(currentProcess->processTime == currentProcess ->remTime)
 					{
-						log(currentProcess,Started);
 						cout <<"SCH: Started Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> remTime <<"\n";
 					}
 					else 
 					{
-						log(currentProcess,Resumed);
 						cout <<"SCH: Resumed Process of id "<< currentProcess -> id <<" and remaining time "<< currentProcess-> remTime <<"\n";
 					}
 				}
@@ -426,12 +426,10 @@ void SRTNIt()
 			lastRun = getClk();
 			if(currentProcess->processTime == currentProcess ->remTime)
 			{
-				log(currentProcess,Started);
 				cout <<"SCH: Started Process of id "<< currentProcess -> id <<" and process time "<< currentProcess-> remTime <<"\n";
 			}
 			else 
 			{
-				log(currentProcess,Resumed);
 				cout <<"SCH: Resumed Process of id "<< currentProcess -> id <<" and remaining time "<< currentProcess-> remTime <<"\n";
 			}
 		}

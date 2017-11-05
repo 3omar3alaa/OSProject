@@ -24,7 +24,10 @@ void recordEnd(int) {
 		exit(0);
 	}
 	else
+	{
+		cout << "PRC " << getpid() << ": I have been PAUSED ..." << endl;
 		raise(SIGSTOP);
+	}	
 }
 
 //////////////////////////////////////////////////////////////////
