@@ -72,8 +72,8 @@ int main(int argc, char* argv[]) {
 	cout << "SCH: Starting with algorithm number " << argv[0] << " and pid of " << getpid() << endl;
 	signal(SIGINT, ClearResources); sumPT = nP = sumWait = 0;
 	PrcmsgQId = -1;
-	cout << std::fixed << setprecision(2);
-	stats << std::fixed << setprecision(2);
+	cout << setprecision(3);
+	stats << setprecision(3);
 	stats << "#At time x process y state arr w total z remain y wait k\n";
 
 	whichAlgo = *(argv[0]) - '0';
@@ -488,8 +488,8 @@ void log(processI* p, logType lt) {
 		break;
 	case Finished:
 	{
-		double wait = ((now - p->arrivalTime) - (p->processTime));
-		double WTA = (now - p->arrivalTime) / p->processTime;
+		double wait = ((now - (double)p->arrivalTime) - ((double)p->processTime));
+		double WTA = (now - (double)p->arrivalTime) / (double)p->processTime;
 		sumWait += wait; sumWTA += WTA;
 		WTAs.push_back(WTA);
 		stats << "At time " << now << " process " << p->id << " finished arr " << p->arrivalTime << " total " << p->processTime << " remain 0 wait " << wait << " TA " << (now - p->arrivalTime) << " WTA " << WTA << "\n";
@@ -506,12 +506,12 @@ void ClearResources(int) {
 	double t = getClk();
 	cout << "SCH: Logging data to file" << endl; 
 	ofstream outL("scheduler.log");
-	outL << std::fixed << setprecision(2) << stats.str();
+	outL << setprecision(3) << stats.str();
 	outL.close(); 
 
 	cout << "SCH: Calculating performance" << endl;
 	ofstream outP("scheduler.perf");
-	outP << std::fixed << setprecision(2) << "CPU utilization=" << ((sumPT / t) * 100) << "%" << endl;
+	outP << setprecision(3) << "CPU utilization=" << ((sumPT / t) * 100) << "%" << endl;
 	outP << "Avg WTA=" << sumWTA / nP << endl;
 	outP << "Avg Waiting=" << sumWait / nP << endl;
 	double sigma = 0;
