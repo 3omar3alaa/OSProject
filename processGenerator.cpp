@@ -121,7 +121,7 @@ void ClearResources(int)
 void ClockChanged(int)
 {
 	int send_val;
-	cout<<"PGEN: the current time is "<<getClk()<<".............................\n";
+	cout<<"PGEN: The current time is "<<getClk()<<".............................\n";
 	if(arrivalTimeArr[currentArrivalIndex]==getClk() && currentArrivalIndex < processesVector.size())
 	{
 		for(int i=0;i<processesVector[currentArrivalIndex].size();i++)

@@ -350,7 +350,7 @@ void HPFIt() {
 
 bool haslessProcessTime(processI p1, processI p2)
 {
-	return p1.remTime <= p2.remTime; 
+	return p1.remTime < p2.remTime; 
 }
 
 void calculateRemTime(processI* p)
