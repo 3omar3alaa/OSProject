@@ -39,6 +39,11 @@ int main() {
 	cout<<"Please choose the scheduler algorithm you want\n";
 	cout<<"1. Non-preemptive HPF\n2. Shortest Remaining Time Next\n3. Round Robin\n";
 	cin>>scheduler;
+	if(scheduler != 1 || 2 || 3)
+	{
+		cout<<"You entered an invalid number\nGoodnight ..... \n";
+		exit(-1);
+	}
 	int quantum;
 	if (scheduler == 3) {
 		cout << "Enter quantum value: " << endl;
@@ -111,7 +116,7 @@ void ClearResources(int)
 void ClockChanged(int)
 {
 	int send_val;
-	cout<<"PGEN: the current time is "<<getClk()<<".............................\n";
+	cout<<"PGEN: The current time is "<<getClk()<<".............................\n";
 	if(arrivalTimeArr[currentArrivalIndex]==getClk() && currentArrivalIndex < processesVector.size())
 	{
 		for(int i=0;i<processesVector[currentArrivalIndex].size();i++)
