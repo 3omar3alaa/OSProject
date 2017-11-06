@@ -56,7 +56,7 @@ void handleClkSignal(int);
 void handleChild(int);
 void ClearResources(int);
 void startSRTN();
-void startRR();
+void startRR(int);
 void RoundRobinIt();
 bool runProcess(processI*);
 void log(processI*, logType);
@@ -71,8 +71,9 @@ int main(int argc, char* argv[]) {
     
 	cout << "SCH: Starting with algorithm number " << argv[0] << " and pid of " << getpid() << endl;
 	signal(SIGINT, ClearResources); sumPT = nP = sumWait = 0;
-	cout << setprecision(2);
-	stats << setprecision(2);
+	PrcmsgQId = -1;
+	cout << std::fixed << setprecision(2);
+	stats << std::fixed << setprecision(2);
 	stats << "#At time x process y state arr w total z remain y wait k\n";
 
 	whichAlgo = *(argv[0]) - '0';
@@ -96,7 +97,7 @@ int main(int argc, char* argv[]) {
 		}
 		break;
 	case 3:
-		startRR();
+		startRR(strtol(argv[1], NULL,10));
 		while (true) {
 			pause();
 			while (gotNewEvent) 
@@ -148,7 +149,7 @@ void startSRTN()
 
 	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
 	if (msgqid == -1) {
-		cout << "SCH: Error in getting message queue, Source: Scheduler" << endl;
+		cout << "SCH: Error in getting message queue." << endl;
 		exit(-1);
 	}
 
@@ -158,14 +159,18 @@ void startSRTN()
 	cout << "SCH: Starting handling child" << endl;
 }
 
-void startRR() {
-	quantum = 4;
+void startRR(int q) {
+	if (q <= 0) {
+		cout << "SCH: Cannot RR with a quantum of " << q << endl;
+		exit(-1);
+	}
+	quantum = q;
 	isProcessing = false;
 	gotNewEvent = false;
 	lastRun = 0;
 	deletePid = 0;
 	initClk();
-	cout << "SCH: Starting RR Algorithm " << endl;
+	cout << "SCH: Starting RR Algorithm with quantum of " << quantum << endl;
 
 	msgqid = msgget(MSGQKEY, IPC_CREAT | 0644);
 	if (msgqid == -1) {
@@ -272,6 +277,7 @@ void RoundRobinIt() {
 			sigemptyset(&ssForNoINT);
 			sigaddset(&ssForNoINT, SIGCHLD);
 			sigaddset(&ssForNoINT, SIGCONT);
+			kill(getppid(), SIGUSR1);
 			isProcessing = false;
 		}
 		else {
@@ -330,6 +336,7 @@ void HPFIt() {
 			sigaddset(&ssForNoINT, SIGCHLD);
 			sigaddset(&ssForNoINT, SIGCONT);
 			isProcessing = false;
+			kill(getppid(), SIGUSR1);
 		}
 		else {
 			if (!isProcessing) {
@@ -435,8 +442,10 @@ void SRTNIt()
 		}
 		
 	}
-	else
+	else {
 		currentProcess = NULL;
+		kill(getppid(), SIGUSR1);
+	}
 }
 
 bool runProcess(processI* runThis) {
@@ -483,7 +492,7 @@ void log(processI* p, logType lt) {
 		double WTA = (now - p->arrivalTime) / p->processTime;
 		sumWait += wait; sumWTA += WTA;
 		WTAs.push_back(WTA);
-		stats << "At time " << now << " process " << p->id << " finished arr " << p->arrivalTime << " total " << p->processTime << " remain 0 " << " wait " << wait << " TA " << (now - p->arrivalTime) << " WTA " << WTA << "\n";
+		stats << "At time " << now << " process " << p->id << " finished arr " << p->arrivalTime << " total " << p->processTime << " remain 0 wait " << wait << " TA " << (now - p->arrivalTime) << " WTA " << WTA << "\n";
 		break;
 	}
 	default:
@@ -494,27 +503,31 @@ void log(processI* p, logType lt) {
 }
 
 void ClearResources(int) {
-	double t = getClk(); //TODO: make it for sure
+	double t = getClk();
 	cout << "SCH: Logging data to file" << endl; 
 	ofstream outL("scheduler.log");
-	outL << stats.str();
+	outL << std::fixed << setprecision(2) << stats.str();
 	outL.close(); 
 
 	cout << "SCH: Calculating performance" << endl;
 	ofstream outP("scheduler.perf");
-	outP << setprecision(2)<<"CPU utilization=" << ((sumPT / t) * 100) << "%" << endl;
+	outP << std::fixed << setprecision(2) << "CPU utilization=" << ((sumPT / t) * 100) << "%" << endl;
 	outP << "Avg WTA=" << sumWTA / nP << endl;
 	outP << "Avg Waiting=" << sumWait / nP << endl;
-	int sigma = 0;
+	double sigma = 0;
 	for (int i = 0; i < WTAs.size(); i++) {
-		sigma += pow(2, WTAs.at(i) - sumWTA/nP);
+		sigma += pow((WTAs.at(i) - (sumWTA/nP)),2);
 	}
 	outP << "Std WTA=" << sqrt(sigma / nP) << endl;
 	outP.close();
 
 	cout << "SCH: Clearing resources.." << endl;
-	destroyClk(false);
-	raise(9);
+	if(PrcmsgQId!=-1)
+		msgctl(PrcmsgQId, IPC_RMID, (struct msqid_ds *) 0);
+	//if (currentProcess != NULL)
+		//delete currentProcess; //TODO: linux has a problem
+	destroyClk();
+	exit(0);
 }
 
 bool priority(processI px1, processI px2) {

@@ -4,10 +4,10 @@
 int shmid;
 int schId;
 
-void cleanup(int x)
+void cleanup(int)
 {
-	shmctl( shmid,IPC_RMID,NULL);
-	cout<<"Clock terminating"<<endl;
+	cout << "ClK: Clearing resources ..." << endl;
+	shmctl(shmid,IPC_RMID,NULL);
 	raise(9);
 }
 
