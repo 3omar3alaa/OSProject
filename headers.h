@@ -30,10 +30,9 @@ struct process{
 
 
 int getClk()
-{
-  
+{ 
    	int clk=*shmaddr;
-       return clk;		
+    return clk;		
 }
 
 
@@ -66,10 +65,8 @@ input: terminateAll : is a flag to indicate whether that
 this is the end of simulation it terminates all the system and release resources
 */
 
-void destroyClk(bool terminateAll)
+void destroyClk()
 {
 	cout << "CLK: Deleting shared memory" << endl;
     shmdt(shmaddr);
-    //if(terminateAll)
-      //killpg(getpgrp(),SIGINT);
 }

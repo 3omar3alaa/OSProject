@@ -20,7 +20,7 @@ void recordEnd(int) {
 	cout << "PRC " << getpid() << ": remTime now is " << remainingtime << endl;
 	if (remainingtime < 1) {
 		cout << "PRC " << getpid() << ": finished! Returning ..." << endl;
-		destroyClk(false);
+		destroyClk();
 		exit(0);
 	}
 	else
@@ -30,10 +30,16 @@ void recordEnd(int) {
 	}	
 }
 
+void cleanUp(int) {
+	destroyClk();
+	exit(0);
+}
+
 //////////////////////////////////////////////////////////////////
 
 int main(int agrc, char* argv[]) {
 
+	signal(SIGINT, cleanUp);
 	initClk();
 	lastRun = getClk();
 	cout << "PRC " << getpid() << ": Starting with running time of " << argv[0] << endl;
@@ -54,6 +60,6 @@ int main(int agrc, char* argv[]) {
 		cout << "PRC " << getpid() << ": TICK TICK" << endl;
 	}
 	cout << "PRC " << getpid() << ": finished! Returning ..." << endl;
-	destroyClk(false);
+	destroyClk();
 	return 0;
 }
